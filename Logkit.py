@@ -51,7 +51,6 @@ def dropbox(log_readlines_position = 0):
     for log_endIndex_line in range(len(dropbox_logContent)):
         if '===' in dropbox_logContent[log_endIndex_line]:
             log_endIndex = log_endIndex_line
-            print u'起始, 结束: ', log_startIndex, log_endIndex
             dropboxLog = ''.join(dropbox_logContent[:log_endIndex])
             break
         else:
