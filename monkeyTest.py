@@ -72,7 +72,7 @@ def Monkey(seed, runcount, event):
             print u'monkey %s模块测试, 无时延, 第%s次测试。' %(processName, runcount)
         else:
             print u'monkey %s模块测试, 无时延, 第%s次测试。' %(processList, runcount)
-        monkeyCommand = 'adb shell monkey --pct-trackball 0 --pct-nav 0 %s -s %s --throttle %s %s' %(monkeyCommand_processName, seed, delay, event)
+        monkeyCommand = 'adb shell monkey --pct-trackball 0 --pct-nav 0 %s -s %s %s' %(monkeyCommand_processName, seed, event)
     os.popen('adb logcat -c')
     # print monkeyCommand
     os.popen(monkeyCommand)

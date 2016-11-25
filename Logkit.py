@@ -38,23 +38,25 @@ def dropbox(log_readlines_position = 0):
         errType = 'CRASH'
     # 获取log内容;
     getLogCommand = 'adb shell dumpsys dropbox --print %s %s' %(ymd, hms)
-    dropbox_logContent_list = os.popen(getLogCommand).readlines()
+    dropbox_logContent_all = os.popen(getLogCommand).readlines()
     log_index = []
     keyword = 'Process: ' + processName
-    dropbox_logContent = ''
+    dropboxLog = ''
     # 通过进程名定位log分片位置;
-    for log_startIndex_line in range(len(dropbox_logContent_list)):
-        if keyword in dropbox_logContent_list[log_startIndex_line]:
+    for log_startIndex_line in range(len(dropbox_logContent_all)):
+        if keyword in dropbox_logContent_all[log_startIndex_line]:
             log_index.append(log_startIndex_line)
     log_startIndex = max(log_index) + 7
-    for log_endIndex_line in range(len(dropbox_logContent_list[log_startIndex:])):
-        if '===' in dropbox_logContent_list[log_endIndex_line]:
+    dropbox_logContent = dropbox_logContent_all[log_startIndex:]
+    for log_endIndex_line in range(len(dropbox_logContent)):
+        if '===' in dropbox_logContent[log_endIndex_line]:
             log_endIndex = log_endIndex_line
-            dropbox_logContent = ''.join(dropbox_logContent_list[log_startIndex:log_endIndex])
+            print u'起始, 结束: ', log_startIndex, log_endIndex
+            dropboxLog = ''.join(dropbox_logContent[:log_endIndex])
             break
         else:
-            dropbox_logContent = ''.join(dropbox_logContent_list[log_startIndex:])
-    return errType, processName, dropbox_logContent
+            dropboxLog = ''.join(dropbox_logContent)
+    return errType, processName, dropboxLog
 
 # bugreport取日志方法, 用以兼容sdktools新旧版本;
 def bugReport():
@@ -81,9 +83,9 @@ def logkit(seed, errType = ''):
     # 日志内有错误信息保留bugreport和dropbox, 日志无错误信息删除文件夹;
     if 'FATAL EXCEPTION:' in logcat_logContent or 'ANR in' in logcat_logContent:
         bugReport()
-        errType, processName, dropbox_logContent = dropbox()
+        errType, processName, dropboxLog = dropbox()
         file_object = open(folderPath('dropboxLog.log'), 'w')
-        file_object.writelines(dropbox_logContent)
+        file_object.writelines(dropboxLog)
         file_object.close()
         if errType == 'ANR':
             os.popen('adb pull /data/anr/traces.txt' + folderPath())
