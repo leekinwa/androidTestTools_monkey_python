@@ -33,7 +33,7 @@ def logCompare():
             str2_open.close()
             log_similarity = logSimilarity(str1, str2)
             if log_similarity >= 0.95:
-                print u'log相似度大于95%, 日志删除。'
+                # print u'log相似度大于95%, 日志删除。'
                 shutil.rmtree(str1_path)
                 break
     else:

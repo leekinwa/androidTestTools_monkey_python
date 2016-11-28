@@ -33,9 +33,10 @@ def device():
 def Monkey(seed, runcount, event):
     monkeyCommand_processName = ''
     # 参数解析;
-    parser = OptionParser()
-    parser.add_option('-p', dest='processName', help=u'进程名, 可输入多个进程名, 为空则执行整机monkey测试。')
-    parser.add_option('-t', dest='Delay', help=u'时延, 事件间时间间隔, 单位为毫秒（ms）。')
+    usage = 'monkeyTest.py [-p <processName>][-t <throttle(delay)>]'
+    parser = OptionParser(usage)
+    parser.add_option('-p', dest='processName', help = u'进程名, 可输入多个进程名, 为空则执行整机monkey测试。')
+    parser.add_option('-t', dest='Delay', help = u'时延, 事件间时间间隔, 单位为毫秒（ms）。')
     (options, args) = parser.parse_args()
     processName = options.processName
     delay = options.Delay
