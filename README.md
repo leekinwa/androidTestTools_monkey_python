@@ -5,7 +5,8 @@
 
 直接运行monkeyTest.py即可，按需添加参数，参数说明参见下方脚本说明。
 ##脚本说明：
-1. monkey循环执行，报错后获取log；
+1. 脚本运行方式：monkeyTest.py [-p processName][-t throttle(delay)]
+2. 参数说明：
 	* -p：指定monkey测试程序（可指定多个被测程序，以空格隔开）；
 	* -t：monkey测试事件间时延；
 	* -h：帮助信息；
