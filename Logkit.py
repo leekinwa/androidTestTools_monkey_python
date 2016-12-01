@@ -17,6 +17,7 @@ def folderPath(fileName = ''):
 # dropbox取log方法;
 def dropbox(log_readlines_position = 0):
     dropboxList = []
+    dropboxLog = ''
     dropboxList_all = os.popen('adb shell dumpsys dropbox').readlines()
     for dropboxLog in dropboxList_all:
         if 'system_app_crash' in dropboxLog or 'data_app_crash' in dropboxLog or 'system_app_anr' in dropboxLog or 'data_app_anr' in dropboxLog:
@@ -39,22 +40,24 @@ def dropbox(log_readlines_position = 0):
     # 获取log内容;
     getLogCommand = 'adb shell dumpsys dropbox --print %s %s' %(ymd, hms)
     dropbox_logContent_all = os.popen(getLogCommand).readlines()
-    log_index = []
-    keyword = 'Process: ' + processName
-    dropboxLog = ''
-    # 通过进程名定位log分片位置;
-    for log_startIndex_line in range(len(dropbox_logContent_all)):
-        if keyword in dropbox_logContent_all[log_startIndex_line]:
-            log_index.append(log_startIndex_line)
-    log_startIndex = max(log_index) + 7
-    dropbox_logContent = dropbox_logContent_all[log_startIndex:]
-    for log_endIndex_line in range(len(dropbox_logContent)):
-        if '===' in dropbox_logContent[log_endIndex_line]:
-            log_endIndex = log_endIndex_line
-            dropboxLog = ''.join(dropbox_logContent[:log_endIndex])
-            break
-        else:
-            dropboxLog = ''.join(dropbox_logContent)
+    if errType == 'CRASH':
+        log_index = []
+        keyword = 'Process: ' + processName
+        # 通过进程名定位log分片位置;
+        for log_startIndex_line in range(len(dropbox_logContent_all)):
+            if keyword in dropbox_logContent_all[log_startIndex_line]:
+                log_index.append(log_startIndex_line)
+        log_startIndex = max(log_index) + 7
+        dropbox_logContent = dropbox_logContent_all[log_startIndex:]
+        for log_endIndex_line in range(len(dropbox_logContent)):
+            if '===' in dropbox_logContent[log_endIndex_line]:
+                log_endIndex = log_endIndex_line
+                dropboxLog = ''.join(dropbox_logContent[:log_endIndex])
+                break
+            else:
+                dropboxLog = ''.join(dropbox_logContent)
+    else:
+        dropboxLog = os.popen(getLogCommand).read()
     return errType, processName, dropboxLog
 
 # bugreport取日志方法, 用以兼容sdktools新旧版本;
