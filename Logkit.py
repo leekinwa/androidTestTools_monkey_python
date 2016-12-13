@@ -14,11 +14,19 @@ def folderPath(fileName = ''):
         path = os.path.join(currentPath, folderName_date, folderName_time, fileName)
     return path
 
+# 记录monkey运行时间;
+def monkey_runtime(runtime):
+    filePath = os.path.join(currentPath, folderName_date, 'MTTF.txt')
+    fileOpen = open(filePath, 'a')
+    fileOpen.writelines(runtime + '\n')
+    fileOpen.close()
+    time.sleep(5)
+
 # dropbox取log方法;
-def dropbox(log_readlines_position = 0):
+def dropbox(devicesID):
     dropboxList = []
     dropboxLog = ''
-    dropboxList_all = os.popen('adb shell dumpsys dropbox').readlines()
+    dropboxList_all = os.popen('adb -s ' + devicesID + ' shell dumpsys dropbox').readlines()
     for dropboxLog in dropboxList_all:
         if 'system_app_crash' in dropboxLog or 'data_app_crash' in dropboxLog or 'system_app_anr' in dropboxLog or 'data_app_anr' in dropboxLog:
             log_position =  dropboxList_all.index(dropboxLog)
@@ -38,7 +46,7 @@ def dropbox(log_readlines_position = 0):
     else:
         errType = 'CRASH'
     # 获取log内容;
-    getLogCommand = 'adb shell dumpsys dropbox --print %s %s' %(ymd, hms)
+    getLogCommand = 'adb -s %s shell dumpsys dropbox --print %s %s' %(devicesID, ymd, hms)
     dropbox_logContent_all = os.popen(getLogCommand).readlines()
     if errType == 'CRASH':
         log_index = []
@@ -58,43 +66,56 @@ def dropbox(log_readlines_position = 0):
                 dropboxLog = ''.join(dropbox_logContent)
     else:
         dropboxLog = os.popen(getLogCommand).read()
+    time.sleep(1)
     return errType, processName, dropboxLog
 
 # bugreport取日志方法, 用以兼容sdktools新旧版本;
-def bugReport():
+def bugReport(devicesID):
     adbVersion = int(os.popen('adb version').readline().split('.')[-1].replace(r'\n', ''))
     # 新版本sdktools取bugreport为zip;
     if adbVersion > 32:
-        os.popen('adb bugreport ' + folderPath())
+        bugReportCommand = 'adb -s %s bugreport %s' %(devicesID, folderPath())
     # 旧版本sdktools取bugreport为文本, 通过重定向获取;
     else:
-        os.popen('adb bugreport > ' + folderPath('bugreport.log'))
+        bugReportCommand = 'adb -s %s bugreport > %s' %(devicesID, folderPath('bugreport.log'))
+    os.popen(bugReportCommand)
 
 # 取日志主函数;
-def logkit(seed, errType = ''):
+def logkit(devicesID, seed, runtime):
+    errType = ''
     timestamp = time.strftime('%Y%m%d%H%M%S',time.localtime(time.time()))
     global folderName_time
     folderName_time = 'monkeyLog' + timestamp
     os.makedirs(folderPath())
     time.sleep(1)
-    os.popen('adb logcat -v time -d > ' + folderPath('logcatReport.log'))
+    logcatCommand = 'adb -s %s logcat -v time -d > %s' %(devicesID, folderPath('logcatReport.log'))
+    dmesgCommand = 'adb -s %s shell dmesg -t > %s' %(devicesID, folderPath('dmesg.log'))
+    topCommand = 'adb -s %s shell top -s cpu -n 1 > %s' %(devicesID, folderPath('top.log'))
+    os.popen(logcatCommand)
+    os.popen(dmesgCommand)
+    os.popen(topCommand)
     time.sleep(2)
     logFile_open = open(folderPath('logcatReport.log'))
     logcat_logContent = logFile_open.read()
     logFile_open.close()
     # 日志内有错误信息保留bugreport和dropbox, 日志无错误信息删除文件夹;
     if 'FATAL EXCEPTION:' in logcat_logContent or 'ANR in' in logcat_logContent:
-        bugReport()
-        errType, processName, dropboxLog = dropbox()
+        errType, processName, dropboxLog = dropbox(devicesID)
         file_object = open(folderPath('dropboxLog.log'), 'w')
         file_object.writelines(dropboxLog)
         file_object.close()
         if errType == 'ANR':
-            os.popen('adb pull /data/anr/traces.txt' + folderPath())
+            anrCommand = 'adb -s %s pull /data/anr/traces.txt %s' %(devicesID, folderPath())
+            os.popen(anrCommand)
+        # bugReport(devicesID)
         time.sleep(2)
-        folder_rename = os.path.join(currentPath, folderName_date, folderName_time + '_%s_seed%s_%s' %(errType, seed, processName))
+        print u'重命名'
+        folder_rename = os.path.join(currentPath, folderName_date, folderName_time + '_%s_%s_seed%s_%s' %(devicesID, errType, seed, processName))
+        print u'原文件名:', folderPath()
+        print u'重命名文件名:', folder_rename
         os.rename(folderPath(), folder_rename)
-        time.sleep(2)
     else:
+        print folderPath(), u'无错误日志'
         shutil.rmtree(folderPath())
+    monkey_runtime(runtime)
     return errType

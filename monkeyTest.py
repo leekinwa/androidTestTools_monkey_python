@@ -8,29 +8,50 @@
 '''
 
 
-import os, time, random, LogCompare_local, Logkit
+import os, time, random, LogCompare_local, Logkit, threading, timeit, platform, multiprocessing
 from optparse import OptionParser
 
+# 计时器;
+def timer():
+    if platform.system() == 'Windows':
+        default_timer = time.clock
+    else:
+        default_timer = time.time
+    return timeit.default_timer()
 
-def device():
+# 判断设备连接状态;
+def wait_for_device(devicesID):
     device_exsit = ''
     reTry = 0
     while reTry < 10:
-        getDevices = os.popen('adb get-state').readline()
+        getDevices_command = 'adb -s %s get-state' %devicesID
+        getDevices = os.popen(getDevices_command).readline()
         if 'device' in getDevices:
             device_exsit = True
             break
         else:
-            os.popen('adb kill-server')
+            os.popen('adb -s ' + devicesID + ' kill-server')
             time.sleep(2)
-            os.popen('adb start-server')
+            os.popen('adb -s ' + devicesID + ' start-server')
             device_exsit = False
             reTry += 1
     if device_exsit == False:
         print u'未识别到手机，请查看手机是否连接成功。'
         exit()
 
-def Monkey(seed, runcount, event):
+# 获取设备list;
+def getDevicesList():
+    getDevices = os.popen('adb devices').readlines()
+    devicesList = []
+    for devices in getDevices:
+        if '\t' in devices:
+            devicesID = devices.split('\t')[0]
+            devicesList.append(devicesID)
+            set_logcat_buffer = 'adb -s %s shell logcat -G 1M' %devicesID
+            os.popen(set_logcat_buffer)
+    return devicesList
+
+def monkey_commands(devicesID, seed, event):
     monkeyCommand_processName = ''
     # 参数解析;
     usage = 'monkeyTest.py [-p <processName>][-t <throttle(delay)>]'
@@ -51,44 +72,46 @@ def Monkey(seed, runcount, event):
         for process in processList:
             processName_command.append(' -p ' + process)
         monkeyCommand_processName = ''.join(processName_command)
+        processName = ', '.join(processList)
     else:
         # processName为空, 跳过参数解析, 执行整机测试;
         pass
-
     # 根据参数执行不同monkey命令并获取日志;
     if processName == None and delay == None:
-        print u'monkey整机测试, 无时延, 第%s次测试。' %runcount
-        monkeyCommand = 'adb shell monkey --pct-trackball 0 --pct-nav 0 -s %s %s' %(seed, event)
+        monkeyCommand = 'adb -s %s shell monkey --pct-trackball 0 --pct-nav 0 -s %s %s' %(devicesID, seed, event)
     elif processName == None and delay != None:
-        print u'monkey整机测试, %s毫秒时延, 第%s次测试。' %(delay, runcount)
-        monkeyCommand = 'adb shell monkey --pct-trackball 0 --pct-nav 0 -s %s --throttle %s %s' %(seed, delay, event)
+        monkeyCommand = 'adb -s %s shell monkey --pct-trackball 0 --pct-nav 0 -s %s --throttle %s %s' %(devicesID, seed, delay, event)
     elif processName != None and delay != None:
-        if len(processList) == 0:
-            print u'monkey %s模块测试, %s毫秒时延, 第%s次测试。' %(processName, delay, runcount)
-        else:
-            print u'monkey %s模块测试, %s毫秒时延, 第%s次测试。' %(processList, delay, runcount)
-        monkeyCommand = 'adb shell monkey --pct-trackball 0 --pct-nav 0 %s -s %s --throttle %s %s' %(monkeyCommand_processName, seed, delay, event)
+        monkeyCommand = 'adb -s %s shell monkey --pct-trackball 0 --pct-nav 0 %s -s %s --throttle %s %s' %(devicesID, monkeyCommand_processName, seed, delay, event)
     else:
-        if len(processList) == 0:
-            print u'monkey %s模块测试, 无时延, 第%s次测试。' %(processName, runcount)
-        else:
-            print u'monkey %s模块测试, 无时延, 第%s次测试。' %(processList, runcount)
-        monkeyCommand = 'adb shell monkey --pct-trackball 0 --pct-nav 0 %s -s %s %s' %(monkeyCommand_processName, seed, event)
-    os.popen('adb logcat -c')
-    # print monkeyCommand
-    os.popen(monkeyCommand)
-    device()
-    getLog_exist = Logkit.logkit(seed)
-    if getLog_exist == 'CRASH':
-        LogCompare_local.logCompare()
+        monkeyCommand = 'adb -s %s shell monkey --pct-trackball 0 --pct-nav 0 %s -s %s %s' %(devicesID, monkeyCommand_processName, seed, event)
+    return monkeyCommand, processName, delay
+
+def monkeyRun(devicesID):
+    runcount = 200
+    event = '999999999'
+    for count in range(runcount):
+        wait_for_device(devicesID)
+        seed = str(random.randint(1, 900))
+        monkeyCommand, processName, delay = monkey_commands(devicesID, seed, event)
+        print u'count: %s devices: %s; process: %s; delay: %s' %(count, devicesID, processName, delay )
+        os.popen('adb -s ' + devicesID + ' logcat -c')
+        startTime = timer()
+        os.popen(monkeyCommand)
+        endTime = timer()
+        runtime = str(round((endTime - startTime)/60, 2))
+        wait_for_device(devicesID)
+        getLog_exist = Logkit.logkit(devicesID, seed, runtime)
+        if getLog_exist == 'CRASH':
+            LogCompare_local.logCompare()
 
 def main():
-    device()
-    runcount = 1
-    while (runcount <= 500):
-        seed = random.randint(1, 900)
-        Monkey( str(seed), str(runcount), event='999999999')
-        runcount += 1
+    devicesList = getDevicesList()
+    for devicesID in devicesList:
+        # monkeyThread = threading.Thread(target=monkeyRun, args=(devicesID, ))
+        # monkeyThread.start()
+        monkeyProcess = multiprocessing.Process(target=monkeyRun, args=(devicesID, ))
+        monkeyProcess.start()
 
 if __name__=='__main__':
     main()
