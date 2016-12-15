@@ -3,7 +3,7 @@
 ##实现需求：
 * 循环运行monkey测试；
 * 运行错误时获取日志保存本地；
-* 并对日志进行去重，本地仅保留唯一日志；
+* 对错误日志进行去重，本地仅保留唯一日志；
 * 支持多设备运行；
 * 记录每次运行时间，用以计算MTTF；
 
@@ -16,11 +16,12 @@
 	* -h：帮助信息；
 	* 不输入参数运行整机测试。
 2. 获取log判断错误类型（crash/anr）获取对应log：
+	* 输出文件格式：monkeyTest+runtime\_deviceID\_errorType\_monkeySeed\_processName
 	* crash分别取logcat、bugreport、dropbox并保留本地;
 	* anr分别取logcat、bugreport、dropbox、/data/anr并保留本地；
 	* 若日志内无错误信息，则删除日志文件夹；
 	* 兼容sdkTools升级后monkey不能通过重定向获取错误日志问题；
-	* 兼容新旧版本sdkTools bugreport获取方式。
+	* 兼容新、旧版本sdkTools bugreport获取方式。
 3. 本地log去重：
 	* 去重逻辑依赖三方库Levenshtein算法，使用本工具时需自行安装；
 	* 只对crash类型log进行去重；
