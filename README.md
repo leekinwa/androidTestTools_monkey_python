@@ -9,7 +9,7 @@
 
 直接运行monkeyTest.py即可，按需添加参数，参数说明参见下方脚本说明。
 ##脚本说明：
-1. 脚本运行方式：monkeyTest.py [-p processName processName][-t throttle(delay)]
+1. 脚本运行方式：monkeyTest.py [-p processName][-t throttle(delay)]
 2. 参数说明：
 	* -p：指定monkey测试程序（可指定多个被测程序，以空格隔开）；
 	* -t：monkey测试事件间时延；
@@ -17,8 +17,8 @@
 	* 不输入参数运行整机测试。
 2. 获取log判断错误类型（crash/anr）获取对应log：
 	* 输出文件格式：monkeyTest+runtime\_deviceID\_errorType\_monkeySeed\_processName
-	* crash分别取logcat、bugreport、dropbox并保留本地;
-	* anr分别取logcat、bugreport、dropbox、/data/anr并保留本地；
+	* crash分别取logcat、dropbox、dmesg、top并保留本地;
+	* anr分别取logcat、dropbox、dmesg、top、/data/anr/trace.txt并保留本地；
 	* 若日志内无错误信息，则删除日志文件夹；
 	* 兼容sdkTools升级后monkey不能通过重定向获取错误日志问题；
 	* 兼容新、旧版本sdkTools bugreport获取方式。
